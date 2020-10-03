@@ -1,3 +1,7 @@
+#TODO: work on detecting when snake is off board/hitting a wall.
+#TODO: reset snake when hittig a wall
+#TODO: place food and check if snake works when being longer
+
 import random
 
 
@@ -8,17 +12,35 @@ class Board():
         self.board = [[Square(x=x, y=y) for x in range(self.width)] for y in range(self.height)]
         # amount of iterations the board has gone through, also used to reduce the time to live of the food class
         self.snake = Snake((5, 5), dirx=1, diry=0)
+        self.set_snake_to_board()
         self.turn = 0
 
 
     def move_snake(self):
+        old_positions = set(body.pos for body in self.snake.body)
         self.snake.move_snake()
+        new_positions = set(body.pos for body in self.snake.body)
+        #gather coordinates that are only in the old set but not the new
+        #and place a square object there again
+        coordinates_to_set_empty = old_positions.difference(new_positions)
+
+        for coordinate in coordinates_to_set_empty:
+            x,y = coordinate
+            self.board[x][y] = Square(x,y)
+
+        #set snake to board with updated positions
+        self.set_snake_to_board()
 
     # sets the snake to the relevant squares on the board
+
+    #turns the snake
+    def turn_snake(self, direction):
+        self.snake.change_direction(direction)
+
+
     def set_snake_to_board(self):
+        #get future snake_pos
         for snake_body_piece in self.snake.body:
-            print(f'setting snake body piece: {snake_body_piece}')
-            print(f'snake x= {snake_body_piece.pos[0]}')
             x,y =snake_body_piece.pos[0], snake_body_piece.pos[1]
             self.board[x][y].square_object = snake_body_piece
 
@@ -102,6 +124,10 @@ class Snake():
         self.head = Cube(start_pos, dirx=dirx, diry=diry)
         self.body = []
         self.body.append(self.head)
+        self.body.append(Cube((6,5), dirx=dirx, diry=diry))
+        self.body.append(Cube((7,5), dirx=dirx, diry=diry))
+        self.body.append(Cube((8,5), dirx=dirx, diry=diry))
+
         self.turns = {}
         self.pos = start_pos
         self.dirx = dirx
@@ -117,31 +143,46 @@ class Snake():
         # add cube element after the last position in list
         self.body.append(Cube(start=(x, y), dirx=dirx, diry=diry))
 
-    def change_direction(self, move):
-        possible_moves = {'up': [0, 1], 'down': [0, -1], 'right': [1, 0], 'left': [-1, 0]}
-        opposite_moves = {'up': 'down', 'down': 'up', 'right': 'left', 'left': 'right'}
+    #TODO; maybe make this a bit smarter by saving the moves dict as a class parameter
+    def get_current_move(self):
+        #invert dict, so we can use movement directions as keys
+        possible_moves = {'up': (0, -1), 'down': (0, 1), 'right': (1, 0), 'left': (-1, 0)}
+        possible_moves = {value: key for key, value in possible_moves.items()}
+        x,y = self.dirx, self.diry
+        return possible_moves[(x,y)]
 
+
+    #TODO: needs work to actualy change head direction
+    #decide if snake actualy needs to store its self.diry and dirx (probably not, because there is no global snake speed/direction!)
+    def change_direction(self, move):
+        opposite_moves = {'up': 'down', 'down': 'up', 'right': 'left', 'left': 'right'}
+        possible_moves = {'up': (0, -1), 'down': (0, 1), 'right': (1, 0), 'left': (-1, 0)}
+
+        current_move = self.get_current_move()
         if move in possible_moves:
             # check if current move is not an impossible move
-            if move != opposite_moves[self.move]:
+            if move != opposite_moves[current_move] and move != current_move:
                 self.dirx = possible_moves[move][0]
                 self.diry = possible_moves[move][1]
+                self.body[-1].set_direction(self.dirx, self.diry)
 
                 # possible do this instead, so we don't change references to variables
                 # self.turns[self.pos[:] = [self.dirx, self,diry]
-                self.turns[self.pos] = [self.dirx, self.diry]
+                self.turns[self.body[-1].pos] = [self.body[-1].dirx, self.body[-1].diry]
         else:
             raise ValueError(f'{move} is not a valid option, possible values: {[move for move in possible_moves]}')
 
     def move_snake(self):
         for cube in self.body:
             cube_pos = cube.pos[:]
+            print(self.turns)
+            print(cube_pos)
             if cube_pos in self.turns:
+                print('turning snake body')
                 turn = self.turns[cube_pos]
                 cube.set_direction(turn[0], turn[1])
             #move the cube
             cube.move()
-
 
 # a piece of snake Body
 class Cube():
@@ -169,14 +210,3 @@ class Food():
 
     def reduce_time_to_live(self, amount=1):
         self.time_to_live += -amount
-
-
-
-bord = Board()
-bord.set_snake_to_board()
-print(bord.board[5][5].square_object)
-print(bord.get_snake_body_squares())
-bord.move_snake()
-bord.set_snake_to_board()
-print(bord.board[5][5].square_object)
-print(bord.get_snake_body_squares())
