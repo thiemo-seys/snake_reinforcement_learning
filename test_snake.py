@@ -43,13 +43,13 @@ def draw_board(board, display):
                                         [x * square_width, y * square_height, square_width, square_height])
 
             elif isinstance(square_object, Cube):
-                if square_object == bord.snake.body[0]:
+                if square_object == bord.snake.body[-1]:
+                    rect = pygame.draw.rect(display, GREEN,
+                                            [x * square_width, y * square_height, square_width, square_height])
+                elif square_object == bord.snake.body[0]:
                     rect = pygame.draw.rect(display, RED,
                                             [x * square_width, y * square_height, square_width, square_height])
 
-                elif square_object == bord.snake.body[-1]:
-                    rect = pygame.draw.rect(display, GREEN,
-                                            [x * square_width, y * square_height, square_width, square_height])
 
 
                 else:
@@ -62,19 +62,17 @@ frames = 0
 game_over = False
 
 bord = Board(30, 30)
+
 start_time = time.time()
 while not game_over:
-    clock.tick(60)
-    if frames % 5 == 0:
-        bord.move_snake()
-    if frames % 300 == 0:
+    clock.tick(10)
+    bord.move_snake()
+    draw_board(bord, display)
+    if frames % 45 == 0:
         bord.placeFood()
-        print(bord.score)
-        print(bord.food_coordinates)
 
     pygame.display.flip()
     frames += 1
-    draw_board(bord, display)
 
     for event in pygame.event.get():
         if (event.type == pygame.QUIT):
@@ -87,21 +85,23 @@ while not game_over:
             if event.key == pygame.K_SPACE:
                 print('spacebar pressed, starting game')
 
-            if event.key == pygame.K_UP:
+            elif event.key == pygame.K_UP:
                 print(f'snake changed movement to up')
                 bord.turn_snake('up')
 
-            if event.key == pygame.K_DOWN:
+
+            elif event.key == pygame.K_DOWN:
                 print(f'snake changed movement to down')
                 bord.turn_snake('down')
 
-            if event.key == pygame.K_RIGHT:
+            elif event.key == pygame.K_RIGHT:
                 print(f'snake changed movement to right')
                 bord.turn_snake('right')
 
-            if event.key == pygame.K_LEFT:
+            elif event.key == pygame.K_LEFT:
                 print(f'snake changed movement to left')
                 bord.turn_snake('left')
+            break
 
 stop_time = time.time()
 print(f'quiting program, ran for {frames} frames and {stop_time - start_time} seconds which is {frames / (stop_time - start_time)} fps')

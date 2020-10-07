@@ -6,12 +6,12 @@ import random
 
 
 class Board():
-    def __init__(self, width=10, height=10):
+    def __init__(self, width=30, height=30):
         self.width = width
         self.height = height
         self.board = [[Square(x=x, y=y) for x in range(self.width)] for y in range(self.height)]
         # amount of iterations the board has gone through, also used to reduce the time to live of the food class
-        self.snake = Snake((5, 5), dirx=1, diry=0)
+        self.snake = Snake((int(width/2), int(height/2)), dirx=1, diry=0)
         self.set_snake_to_board()
         self.food_coordinates = set([])
         self.score = 0
@@ -36,7 +36,7 @@ class Board():
 
         for coordinate in coordinates_to_set_empty:
             x, y = coordinate
-            self.board[x][y] = Square(x, y)
+            self.board[x][y].square_object = None
 
         # set snake to board with updated positions
         self.set_snake_to_board()
@@ -60,33 +60,28 @@ class Board():
     def placeSnakeHead(self, start_pos):
         self.board[start_pos[0]][start_pos[1]] = Snake(start_pos)
 
-    def placeFood(self, start_pos=None):
+    def placeFood(self, start_pos=(15,15)):
         # no specific position was specified, so putting food in a random free place
         if start_pos is None:
             food_squares = self.get_food_squares()
             x, y = random.randint(0, self.width - 1), random.randint(0, self.height - 1)
-
             # check if the random food square is not yet occupied
             while (x, y) in food_squares:
                 x, y = random.randint(0, self.width - 1), random.randint(0, self.height - 1)
         else:
             x, y = start_pos
-
         self.board[x][y].square_object = Food(x, y)
         self.food_coordinates.add((x,y))
 
     def get_squares_containing_object(self, object_name):
         # also add head and tail here
         object_name_type_mapping = {'empty': None, 'snake': Cube, 'food': Food, 'head': Snake, 'tail': Snake}
-
         squares_containing_object = []
-
         for x, row in enumerate(self.board):
             for y, square in enumerate(row):
                 if object_name_type_mapping.get(object_name) is None:
                     if square.square_object is None:
                         squares_containing_object.append((x, y))
-
                 elif isinstance(square.square_object, object_name_type_mapping.get(object_name)):
                     squares_containing_object.append((x, y))
         return squares_containing_object
@@ -103,20 +98,17 @@ class Board():
     def get_snake_body_squares(self):
         return self.get_squares_containing_object('snake')
 
+    #returns a tuple containing the snakes tail location
     def get_snake_tail_pos(self):
-        pass
+        return self.snake.body[0].pos
 
+    #returns a tuple containing the snakes head location
     def get_snake_head_pos(self):
-        pass
+        return self.snake.body[-1].pos
 
+    #resets to board to be fully empty squares
     def reset_board(self):
         self.board = [[Square(x=x, y=y) for x in range(self.width)] for y in range(self.height)]
-
-    # maybe override this method for pretty printing?
-    # but seems weird to print it pretty because return breaks the function
-    # def __str__(self):
-    #    pass
-
 
 class Square():
     def __init__(self, x, y, square_object=None):
@@ -124,9 +116,7 @@ class Square():
         self.y = y
         self.square_object = square_object
 
-    def __str__(self):
-        return str(self.object)
-
+    #expand methods in here if every needed, at the moment the square class is rather useless
 
 #############################################################################################################################################
 class Snake():
@@ -144,14 +134,14 @@ class Snake():
         x, y = tail.pos[0], tail.pos[1]
         # TODO: debug this to see if we do not need to offset the cubes position in account of the snakes tails velocity
         # add cube element after the last position in list
-        self.body.append(Cube(start=(x+dirx, y+diry), dirx=dirx, diry=diry))
+        self.body.append(Cube(start=(x-dirx, y-diry), dirx=dirx, diry=diry))
 
     # TODO; maybe make this a bit smarter by saving the moves dict as a class parameter
     def get_current_move(self):
         # invert dict, so we can use movement directions as keys
         possible_moves = {'up': (0, -1), 'down': (0, 1), 'right': (1, 0), 'left': (-1, 0)}
         possible_moves = {value: key for key, value in possible_moves.items()}
-        head = self.body[-1]
+        head = self.body[0]
         x, y = head.dirx, head.diry
         return possible_moves[(x, y)]
 
@@ -167,23 +157,23 @@ class Snake():
             if move != opposite_moves[current_move] and move != current_move:
                 self.dirx = possible_moves[move][0]
                 self.diry = possible_moves[move][1]
-                self.body[-1].set_direction(self.dirx, self.diry)
+                self.body[0].set_direction(self.dirx, self.diry)
 
                 # possible do this instead, so we don't change references to variables
                 # self.turns[self.pos[:] = [self.dirx, self,diry]
-                self.turns[self.body[-1].pos] = [self.body[-1].dirx, self.body[-1].diry]
+                self.turns[self.body[0].pos] = [self.body[0].dirx, self.body[0].diry]
         else:
             raise ValueError(f'{move} is not a valid option, possible values: {[move for move in possible_moves]}')
 
     def move_snake(self):
         for index, cube in enumerate(self.body):
-            cube_pos = cube.pos[:]
+            cube_pos = cube.pos
             # if tail is at a turn position, we remove the turn from the dictionary because the whole snake has passed the turn
             if cube_pos in self.turns:
-                turn = self.turns[cube_pos][:]
+                turn = self.turns[cube_pos]
                 cube.set_direction(turn[0], turn[1])
-                # move the cube
-                if index == 0:
+                #if tail reached the turn, remove it form the dict
+                if index == len(self.body)-1:
                     self.turns.pop(cube_pos)
             cube.move()
 
